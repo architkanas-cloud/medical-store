@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Customers – MediStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon-sm">⚕</div><span>MediStore</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span>🏠</span> Dashboard</a>
+      <a href="inventory.html" class="nav-item"><span>📦</span> Inventory</a>
+      <a href="sales.html" class="nav-item"><span>🧾</span> Sales & Billing</a>
+      <a href="customers.html" class="nav-item active"><span>👥</span> Customers</a>
+      <a href="reports.html" class="nav-item"><span>📊</span> Reports</a>
+      <div class="nav-divider"></div>
+      <a href="index.html" class="nav-item logout" onclick="logout()"><span>🚪</span> Logout</a>
+    </nav>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title">Customer Management</div>
+      <div class="topbar-right">
+        <button class="btn-primary" onclick="openModal('addCustModal')">+ Add Customer</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="filter-bar">
+        <input type="text" id="searchCust" placeholder="🔍 Search by name or phone..." oninput="filterCustomers()" class="filter-input"/>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">All Customers</h3>
+          <span class="count-badge" id="custCount">0 customers</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>Total Spent</th><th>Actions</th></tr></thead>
+            <tbody id="custBody"><tr><td colspan="6" class="loading-cell">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Billing History Modal -->
+<div class="modal-overlay" id="histModal">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('histModal')">&times;</button>
+    <h2>Purchase History</h2>
+    <p id="histName" style="color:#6b7280;margin-bottom:16px"></p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Bill No.</th><th>Items</th><th>Total</th><th>Date</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="addCustModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addCustModal')">&times;</button>
+    <h2 id="custModalTitle">Add Customer</h2>
+    <form id="custForm">
+      <input type="hidden" id="custDocId"/>
+      <div class="form-group"><label>Full Name *</label><input type="text" id="custName" required/></div>
+      <div class="form-group"><label>Phone *</label><input type="tel" id="custPhone" required/></div>
+      <div class="form-group"><label>Email</label><input type="email" id="custEmail"/></div>
+      <div class="form-group"><label>Address</label><textarea id="custAddress" rows="2"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('addCustModal')">Cancel</button>
+        <button type="submit" class="btn-primary" id="custSubmitBtn">Add Customer</button>
+      </div>
+      <div class="form-msg" id="custMsg"></div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const user = JSON.parse(sessionStorage.getItem('msUser') || 'null');
+  if (!user) window.location.href = 'index.html';
+
+  let allCustomers = [], allSales = [];
+
+  async function loadAll() {
+    const [custSnap, salesSnap] = await Promise.all([
+      getDocs(collection(db, 'customers')),
+      getDocs(collection(db, 'sales'))
+    ]);
+    allCustomers = [];
+    custSnap.forEach(d => allCustomers.push({ id: d.id, ...d.data() }));
+    allSales = [];
+    salesSnap.forEach(d => allSales.push({ id: d.id, ...d.data() }));
+    renderCustomers(allCustomers);
+  }
+
+  function renderCustomers(custs) {
+    document.getElementById('custCount').textContent = custs.length + ' customers';
+    const tbody = document.getElementById('custBody');
+    if (!custs.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="no-data">No customers yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = custs.map(c => {
+      const spent = allSales.filter(s => s.customerPhone === c.phone).reduce((sum, s) => sum + (s.total||0), 0);
+      return `<tr>
+        <td><b>${c.name}</b></td>
+        <td>${c.phone}</td>
+        <td>${c.email || '—'}</td>
+        <td>${c.address || '—'}</td>
+        <td>₹${spent.toFixed(2)}</td>
+        <td class="action-btns">
+          <button class="btn-icon" onclick="viewHistory('${c.id}')">📋</button>
+          <button class="btn-icon" onclick="editCust('${c.id}')">✏️</button>
+          <button class="btn-icon danger" onclick="deleteCust('${c.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  window.filterCustomers = () => {
+    const q = document.getElementById('searchCust').value.toLowerCase();
+    renderCustomers(allCustomers.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.includes(q)));
+  };
+
+  window.viewHistory = (id) => {
+    const c = allCustomers.find(x => x.id === id);
+    const bills = allSales.filter(s => s.customerPhone === c?.phone);
+    document.getElementById('histName').textContent = 'Customer: ' + c?.name + ' (' + c?.phone + ')';
+    document.getElementById('histBody').innerHTML = bills.length ? bills.map(b => `
+      <tr>
+        <td><b>#${b.billNo}</b></td>
+        <td>${(b.items||[]).length} items</td>
+        <td>₹${(b.total||0).toFixed(2)}</td>
+        <td>${b.date}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4" class="no-data">No purchase history.</td></tr>';
+    openModal('histModal');
+  };
+
+  let editingCust = null;
+  document.getElementById('custForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('custMsg');
+    const data = {
+      name: document.getElementById('custName').value,
+      phone: document.getElementById('custPhone').value,
+      email: document.getElementById('custEmail').value,
+      address: document.getElementById('custAddress').value,
+    };
+    try {
+      if (editingCust) {
+        await updateDoc(doc(db, 'customers', editingCust), data);
+        msg.textContent = '✅ Customer updated!';
+      } else {
+        await addDoc(collection(db, 'customers'), { ...data, createdAt: new Date().toISOString() });
+        msg.textContent = '✅ Customer added!';
+      }
+      msg.style.color = 'green';
+      setTimeout(() => { closeModal('addCustModal'); loadAll(); msg.textContent = ''; }, 900);
+    } catch(err) { msg.textContent = '❌ ' + err.message; msg.style.color = 'red'; }
+  });
+
+  window.editCust = (id) => {
+    const c = allCustomers.find(x => x.id === id);
+    editingCust = id;
+    document.getElementById('custModalTitle').textContent = 'Edit Customer';
+    document.getElementById('custSubmitBtn').textContent = 'Update Customer';
+    document.getElementById('custName').value = c.name || '';
+    document.getElementById('custPhone').value = c.phone || '';
+    document.getElementById('custEmail').value = c.email || '';
+    document.getElementById('custAddress').value = c.address || '';
+    openModal('addCustModal');
+  };
+
+  window.deleteCust = async (id) => {
+    if (confirm('Delete this customer?')) {
+      await deleteDoc(doc(db, 'customers', id));
+      loadAll();
+    }
+  };
+
+  // Reset on open
+  const origOpen = window.openModal;
+  window.openModal = (id) => {
+    if (id === 'addCustModal') {
+      editingCust = null;
+      document.getElementById('custModalTitle').textContent = 'Add Customer';
+      document.getElementById('custSubmitBtn').textContent = 'Add Customer';
+      document.getElementById('custForm').reset();
+    }
+    document.getElementById(id)?.classList.add('active');
+  };
+
+  loadAll();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

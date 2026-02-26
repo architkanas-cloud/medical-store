@@ -1,0 +1,339 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sales & Billing – MediStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon-sm">⚕</div><span>MediStore</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span>🏠</span> Dashboard</a>
+      <a href="inventory.html" class="nav-item"><span>📦</span> Inventory</a>
+      <a href="sales.html" class="nav-item active"><span>🧾</span> Sales & Billing</a>
+      <a href="customers.html" class="nav-item"><span>👥</span> Customers</a>
+      <a href="reports.html" class="nav-item"><span>📊</span> Reports</a>
+      <div class="nav-divider"></div>
+      <a href="index.html" class="nav-item logout" onclick="logout()"><span>🚪</span> Logout</a>
+    </nav>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title">Sales & Billing</div>
+      <div class="topbar-right">
+        <button class="btn-primary" onclick="openModal('newBillModal')">+ New Bill</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- Sales History -->
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Sales History</h3>
+          <input type="date" id="filterDate" class="filter-input" style="width:180px" onchange="loadSales()"/>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Bill No.</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody id="salesBody"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW BILL MODAL -->
+<div class="modal-overlay" id="newBillModal">
+  <div class="modal modal-xl">
+    <button class="modal-close" onclick="closeModal('newBillModal')">&times;</button>
+    <h2>New Bill / Invoice</h2>
+
+    <div class="bill-layout">
+      <!-- Left: Add items -->
+      <div class="bill-left">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" id="billCustomer" placeholder="Walk-in / Customer name"/>
+          </div>
+          <div class="form-group">
+            <label>Customer Phone</label>
+            <input type="text" id="billPhone" placeholder="Optional"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Search & Add Medicine</label>
+          <div class="med-search-wrap">
+            <input type="text" id="medSearch" placeholder="Type medicine name..." oninput="searchMedForBill()" class="filter-input" style="width:100%"/>
+            <div class="med-dropdown" id="medDropdown"></div>
+          </div>
+        </div>
+
+        <!-- Bill Items -->
+        <div class="bill-items-header">
+          <span>Medicine</span><span>Qty</span><span>Price</span><span>Total</span><span></span>
+        </div>
+        <div id="billItems"></div>
+        <div class="bill-empty" id="billEmpty">No items added yet. Search above to add medicines.</div>
+
+        <div class="bill-totals">
+          <div class="bill-total-row">
+            <span>Subtotal</span>
+            <span id="subtotalAmt">₹0.00</span>
+          </div>
+          <div class="bill-total-row">
+            <span>Discount (%)</span>
+            <input type="number" id="discountPct" value="0" min="0" max="100" oninput="recalcTotal()" class="discount-input"/>
+          </div>
+          <div class="bill-total-row total-row">
+            <span>TOTAL</span>
+            <span id="totalAmt">₹0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Bill preview -->
+      <div class="bill-right">
+        <div class="bill-preview" id="billPreview">
+          <div class="bill-preview-header">
+            <div class="bill-logo">⚕ MediStore</div>
+            <div class="bill-preview-title">INVOICE</div>
+            <div class="bill-meta">
+              <div>Bill No: <b id="previewBillNo">#—</b></div>
+              <div>Date: <b id="previewDate">—</b></div>
+              <div>Customer: <b id="previewCustomer">Walk-in</b></div>
+            </div>
+          </div>
+          <div class="bill-preview-items" id="previewItems">
+            <p style="color:#aaa;text-align:center;padding:20px">Add items to see preview</p>
+          </div>
+          <div class="bill-preview-footer">
+            <div class="preview-total-row"><span>Subtotal</span><span id="prevSubtotal">₹0.00</span></div>
+            <div class="preview-total-row"><span>Discount</span><span id="prevDiscount">₹0.00</span></div>
+            <div class="preview-total-row grand"><span>GRAND TOTAL</span><span id="prevTotal">₹0.00</span></div>
+          </div>
+        </div>
+        <button class="btn-primary w100" style="margin-top:16px" onclick="saveBill()">💾 Save & Generate Bill</button>
+        <button class="btn-outline w100" style="margin-top:8px" onclick="printBill()">🖨️ Print Bill</button>
+      </div>
+    </div>
+    <div class="form-msg" id="billMsg"></div>
+  </div>
+</div>
+
+<!-- BILL VIEW MODAL -->
+<div class="modal-overlay" id="viewBillModal">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('viewBillModal')">&times;</button>
+    <div id="viewBillContent"></div>
+    <button class="btn-primary" onclick="window.print()">🖨️ Print</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window.db = db;
+  const user = JSON.parse(sessionStorage.getItem('msUser') || 'null');
+  if (!user) window.location.href = 'index.html';
+
+  let allMeds = [], billItems = [];
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('filterDate').value = today;
+  document.getElementById('previewDate').textContent = today;
+  document.getElementById('previewBillNo').textContent = '#' + Math.floor(Math.random()*90000+10000);
+
+  async function init() {
+    const snap = await getDocs(collection(db, 'medicines'));
+    allMeds = [];
+    snap.forEach(d => allMeds.push({ id: d.id, ...d.data() }));
+    loadSales();
+  }
+
+  window.loadSales = async () => {
+    const date = document.getElementById('filterDate').value;
+    const snap = await getDocs(collection(db, 'sales'));
+    let sales = [];
+    snap.forEach(d => sales.push({ id: d.id, ...d.data() }));
+    if (date) sales = sales.filter(s => s.date === date);
+    sales.sort((a,b) => b.date?.localeCompare(a.date));
+    const tbody = document.getElementById('salesBody');
+    tbody.innerHTML = sales.length ? sales.map(s => `
+      <tr>
+        <td><b>#${s.billNo}</b></td>
+        <td>${s.customerName || 'Walk-in'}</td>
+        <td>${(s.items || []).length} items</td>
+        <td>₹${(s.subtotal||0).toFixed(2)}</td>
+        <td>${s.discount || 0}%</td>
+        <td><b>₹${(s.total||0).toFixed(2)}</b></td>
+        <td>${s.date}</td>
+        <td><button class="btn-icon" onclick="viewBill('${s.id}')">👁️</button></td>
+      </tr>
+    `).join('') : '<tr><td colspan="8" class="no-data">No sales on this date.</td></tr>';
+  };
+
+  window.searchMedForBill = () => {
+    const q = document.getElementById('medSearch').value.toLowerCase();
+    const dd = document.getElementById('medDropdown');
+    if (!q) { dd.innerHTML = ''; return; }
+    const matches = allMeds.filter(m => m.name?.toLowerCase().includes(q) && m.quantity > 0);
+    dd.innerHTML = matches.slice(0,6).map(m => `
+      <div class="dd-item" onclick="addToBill('${m.id}')">
+        <b>${m.name}</b> <span style="float:right;color:#6b7280">₹${m.price} | Qty: ${m.quantity}</span>
+      </div>
+    `).join('') || '<div class="dd-item" style="color:#aaa">No medicines found</div>';
+  };
+
+  window.addToBill = (id) => {
+    const m = allMeds.find(x => x.id === id);
+    if (!m) return;
+    const existing = billItems.find(i => i.id === id);
+    if (existing) { existing.qty++; } 
+    else { billItems.push({ id: m.id, name: m.name, price: m.price, qty: 1, max: m.quantity }); }
+    document.getElementById('medSearch').value = '';
+    document.getElementById('medDropdown').innerHTML = '';
+    renderBillItems();
+  };
+
+  function renderBillItems() {
+    const container = document.getElementById('billItems');
+    const empty = document.getElementById('billEmpty');
+    if (!billItems.length) {
+      container.innerHTML = '';
+      empty.style.display = 'block';
+      recalcTotal();
+      return;
+    }
+    empty.style.display = 'none';
+    container.innerHTML = billItems.map((item, i) => `
+      <div class="bill-item-row">
+        <span>${item.name}</span>
+        <input type="number" value="${item.qty}" min="1" max="${item.max}" onchange="updateQty(${i}, this.value)" class="qty-input"/>
+        <span>₹${item.price}</span>
+        <span>₹${(item.price * item.qty).toFixed(2)}</span>
+        <button onclick="removeItem(${i})" class="btn-icon danger">✕</button>
+      </div>
+    `).join('');
+    recalcTotal();
+  }
+
+  window.updateQty = (i, val) => { billItems[i].qty = Math.max(1, parseInt(val)||1); renderBillItems(); };
+  window.removeItem = (i) => { billItems.splice(i, 1); renderBillItems(); };
+
+  window.recalcTotal = () => {
+    const subtotal = billItems.reduce((s, i) => s + i.price * i.qty, 0);
+    const disc = parseFloat(document.getElementById('discountPct').value) || 0;
+    const discAmt = subtotal * disc / 100;
+    const total = subtotal - discAmt;
+    const customer = document.getElementById('billCustomer').value || 'Walk-in';
+
+    document.getElementById('subtotalAmt').textContent = '₹' + subtotal.toFixed(2);
+    document.getElementById('totalAmt').textContent = '₹' + total.toFixed(2);
+    document.getElementById('prevSubtotal').textContent = '₹' + subtotal.toFixed(2);
+    document.getElementById('prevDiscount').textContent = '₹' + discAmt.toFixed(2);
+    document.getElementById('prevTotal').textContent = '₹' + total.toFixed(2);
+    document.getElementById('previewCustomer').textContent = customer;
+
+    const pItems = document.getElementById('previewItems');
+    pItems.innerHTML = billItems.length ? `
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid #eee"><th style="text-align:left;padding:6px">Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+        <tbody>${billItems.map(i => `<tr style="border-bottom:1px solid #f5f5f5"><td style="padding:6px">${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:right">₹${i.price}</td><td style="text-align:right">₹${(i.price*i.qty).toFixed(2)}</td></tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:#aaa;text-align:center;padding:20px">Add items to see preview</p>';
+  };
+
+  window.saveBill = async () => {
+    if (!billItems.length) { alert('Add at least one medicine to the bill!'); return; }
+    const msg = document.getElementById('billMsg');
+    const subtotal = billItems.reduce((s,i) => s + i.price*i.qty, 0);
+    const disc = parseFloat(document.getElementById('discountPct').value) || 0;
+    const total = subtotal - subtotal*disc/100;
+    const billNo = Math.floor(Math.random()*90000+10000).toString();
+
+    try {
+      // Save sale
+      await addDoc(collection(db, 'sales'), {
+        billNo,
+        customerName: document.getElementById('billCustomer').value || 'Walk-in',
+        customerPhone: document.getElementById('billPhone').value,
+        items: billItems,
+        subtotal, discount: disc, total,
+        date: today, createdBy: user.username
+      });
+
+      // Update stock
+      for (const item of billItems) {
+        const med = allMeds.find(m => m.id === item.id);
+        if (med) {
+          await updateDoc(doc(db, 'medicines', item.id), { quantity: med.quantity - item.qty });
+        }
+      }
+
+      msg.textContent = '✅ Bill saved! Bill No: #' + billNo;
+      msg.style.color = 'green';
+      billItems = [];
+      renderBillItems();
+      document.getElementById('billCustomer').value = '';
+      document.getElementById('discountPct').value = 0;
+      loadSales();
+      init();
+    } catch(e) {
+      msg.textContent = '❌ ' + e.message; msg.style.color = 'red';
+    }
+  };
+
+  window.printBill = () => window.print();
+
+  window.viewBill = async (id) => {
+    const snap = await getDocs(collection(db, 'sales'));
+    let sale = null;
+    snap.forEach(d => { if(d.id === id) sale = { id: d.id, ...d.data() }; });
+    if (!sale) return;
+    document.getElementById('viewBillContent').innerHTML = `
+      <div style="font-family:monospace;max-width:400px;margin:0 auto;padding:20px;border:2px solid #eee">
+        <div style="text-align:center;font-size:24px;font-weight:bold">⚕ MediStore</div>
+        <div style="text-align:center;margin-bottom:16px;color:#6b7280">Medical Store Management</div>
+        <hr/><div style="margin:10px 0">Bill No: <b>#${sale.billNo}</b></div>
+        <div>Customer: <b>${sale.customerName || 'Walk-in'}</b></div>
+        <div>Date: <b>${sale.date}</b></div><hr/>
+        ${(sale.items||[]).map(i => `<div style="display:flex;justify-content:space-between;padding:4px 0"><span>${i.name} x${i.qty}</span><span>₹${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}
+        <hr/>
+        <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>₹${sale.subtotal?.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Discount (${sale.discount}%)</span><span>₹${(sale.subtotal*sale.discount/100).toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:18px;margin-top:8px"><span>TOTAL</span><span>₹${sale.total?.toFixed(2)}</span></div>
+        <hr/><div style="text-align:center;margin-top:12px;color:#6b7280">Thank you! Get well soon 💊</div>
+      </div>
+    `;
+    openModal('viewBillModal');
+  };
+
+  init();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

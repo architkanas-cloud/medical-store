@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inventory – MediStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon-sm">⚕</div><span>MediStore</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span>🏠</span> Dashboard</a>
+      <a href="inventory.html" class="nav-item active"><span>📦</span> Inventory</a>
+      <a href="sales.html" class="nav-item"><span>🧾</span> Sales & Billing</a>
+      <a href="customers.html" class="nav-item"><span>👥</span> Customers</a>
+      <a href="reports.html" class="nav-item"><span>📊</span> Reports</a>
+      <div class="nav-divider"></div>
+      <a href="index.html" class="nav-item logout" onclick="logout()"><span>🚪</span> Logout</a>
+    </nav>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title">Inventory Management</div>
+      <div class="topbar-right">
+        <button class="btn-primary" onclick="openModal('addMedModal')">+ Add Medicine</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- Search & Filter -->
+      <div class="filter-bar">
+        <input type="text" id="searchMed" placeholder="🔍 Search by medicine name..." oninput="filterTable()" class="filter-input"/>
+        <select id="filterCat" onchange="filterTable()" class="filter-select">
+          <option value="">All Categories</option>
+          <option>Tablet</option><option>Syrup</option><option>Injection</option>
+          <option>Capsule</option><option>Ointment</option><option>Drops</option>
+        </select>
+        <select id="filterStatus" onchange="filterTable()" class="filter-select">
+          <option value="">All Status</option>
+          <option value="low">Low Stock</option>
+          <option value="expiring">Expiring Soon</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+
+      <!-- Inventory Table -->
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Medicine Stock</h3>
+          <span class="count-badge" id="medCount">0 medicines</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="medsTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Category</th><th>Company</th>
+                <th>Price (₹)</th><th>Qty</th><th>Min Stock</th>
+                <th>Expiry</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="medsBody">
+              <tr><td colspan="9" class="loading-cell">Loading medicines...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MEDICINE MODAL -->
+<div class="modal-overlay" id="addMedModal">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('addMedModal')">&times;</button>
+    <h2 id="modalTitle">Add Medicine</h2>
+    <form id="medForm">
+      <input type="hidden" id="medDocId"/>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Medicine Name *</label>
+          <input type="text" id="medName" placeholder="e.g. Paracetamol 500mg" required/>
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="medCat" required>
+            <option value="">Select category</option>
+            <option>Tablet</option><option>Syrup</option><option>Injection</option>
+            <option>Capsule</option><option>Ointment</option><option>Drops</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Company / Manufacturer</label>
+          <input type="text" id="medCompany" placeholder="e.g. Cipla Ltd"/>
+        </div>
+        <div class="form-group">
+          <label>Batch Number</label>
+          <input type="text" id="medBatch" placeholder="e.g. B2024-001"/>
+        </div>
+        <div class="form-group">
+          <label>Purchase Price (₹) *</label>
+          <input type="number" id="medPurchasePrice" placeholder="0.00" step="0.01" required/>
+        </div>
+        <div class="form-group">
+          <label>Selling Price (₹) *</label>
+          <input type="number" id="medPrice" placeholder="0.00" step="0.01" required/>
+        </div>
+        <div class="form-group">
+          <label>Quantity in Stock *</label>
+          <input type="number" id="medQty" placeholder="0" required/>
+        </div>
+        <div class="form-group">
+          <label>Minimum Stock Alert</label>
+          <input type="number" id="medMinStock" placeholder="10" value="10"/>
+        </div>
+        <div class="form-group">
+          <label>Manufacture Date</label>
+          <input type="date" id="medMfgDate"/>
+        </div>
+        <div class="form-group">
+          <label>Expiry Date *</label>
+          <input type="date" id="medExpiry" required/>
+        </div>
+        <div class="form-group full-width">
+          <label>Description / Usage</label>
+          <textarea id="medDesc" placeholder="How to use, dosage info..." rows="2"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('addMedModal')">Cancel</button>
+        <button type="submit" class="btn-primary" id="medSubmitBtn">Add Medicine</button>
+      </div>
+      <div class="form-msg" id="medMsg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal modal-sm">
+    <h2>Confirm Delete</h2>
+    <p style="color:#6b7280;margin:12px 0 24px">Are you sure you want to delete this medicine? This action cannot be undone.</p>
+    <div class="form-actions">
+      <button class="btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+  const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const user = JSON.parse(sessionStorage.getItem('msUser') || 'null');
+  if (!user) window.location.href = 'index.html';
+
+  let allMeds = [];
+  const today = new Date().toISOString().split('T')[0];
+  const in30 = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+
+  function getStatus(med) {
+    if (med.expiry < today) return { label: 'Expired', cls: 'red' };
+    if (med.expiry <= in30) return { label: 'Expiring', cls: 'orange' };
+    if (med.quantity <= (med.minStock || 10)) return { label: 'Low Stock', cls: 'red' };
+    return { label: 'OK', cls: 'green' };
+  }
+
+  async function loadMeds() {
+    const snap = await getDocs(collection(db, 'medicines'));
+    allMeds = [];
+    snap.forEach(d => allMeds.push({ id: d.id, ...d.data() }));
+    renderTable(allMeds);
+  }
+
+  function renderTable(meds) {
+    document.getElementById('medCount').textContent = meds.length + ' medicines';
+    const tbody = document.getElementById('medsBody');
+    if (!meds.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="no-data">No medicines found. Add one!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = meds.map(m => {
+      const st = getStatus(m);
+      return `<tr>
+        <td><b>${m.name}</b></td>
+        <td>${m.category || '—'}</td>
+        <td>${m.company || '—'}</td>
+        <td>₹${(m.price || 0).toFixed(2)}</td>
+        <td class="${m.quantity <= (m.minStock||10) ? 'text-red' : ''}">${m.quantity}</td>
+        <td>${m.minStock || 10}</td>
+        <td class="${m.expiry <= today ? 'text-red' : m.expiry <= in30 ? 'text-orange' : ''}">${m.expiry || '—'}</td>
+        <td><span class="badge ${st.cls}">${st.label}</span></td>
+        <td class="action-btns">
+          <button class="btn-icon" onclick="editMed('${m.id}')">✏️</button>
+          <button class="btn-icon danger" onclick="deleteMed('${m.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  window.filterTable = () => {
+    const search = document.getElementById('searchMed').value.toLowerCase();
+    const cat = document.getElementById('filterCat').value;
+    const status = document.getElementById('filterStatus').value;
+    let filtered = allMeds.filter(m => {
+      const matchSearch = m.name?.toLowerCase().includes(search);
+      const matchCat = !cat || m.category === cat;
+      const st = getStatus(m);
+      const matchStatus = !status || 
+        (status === 'low' && m.quantity <= (m.minStock||10)) ||
+        (status === 'expiring' && m.expiry <= in30 && m.expiry >= today) ||
+        (status === 'expired' && m.expiry < today);
+      return matchSearch && matchCat && matchStatus;
+    });
+    renderTable(filtered);
+  };
+
+  // Add / Edit
+  let editingId = null;
+  document.getElementById('medForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('medMsg');
+    const data = {
+      name: document.getElementById('medName').value,
+      category: document.getElementById('medCat').value,
+      company: document.getElementById('medCompany').value,
+      batch: document.getElementById('medBatch').value,
+      purchasePrice: parseFloat(document.getElementById('medPurchasePrice').value) || 0,
+      price: parseFloat(document.getElementById('medPrice').value),
+      quantity: parseInt(document.getElementById('medQty').value),
+      minStock: parseInt(document.getElementById('medMinStock').value) || 10,
+      mfgDate: document.getElementById('medMfgDate').value,
+      expiry: document.getElementById('medExpiry').value,
+      description: document.getElementById('medDesc').value,
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, 'medicines', editingId), data);
+        msg.textContent = '✅ Medicine updated!'; msg.style.color = 'green';
+      } else {
+        await addDoc(collection(db, 'medicines'), { ...data, createdAt: new Date().toISOString() });
+        msg.textContent = '✅ Medicine added!'; msg.style.color = 'green';
+      }
+      setTimeout(() => { closeModal('addMedModal'); loadMeds(); msg.textContent = ''; }, 1000);
+    } catch(err) {
+      msg.textContent = '❌ ' + err.message; msg.style.color = 'red';
+    }
+  });
+
+  window.editMed = (id) => {
+    const m = allMeds.find(x => x.id === id);
+    if (!m) return;
+    editingId = id;
+    document.getElementById('modalTitle').textContent = 'Edit Medicine';
+    document.getElementById('medSubmitBtn').textContent = 'Update Medicine';
+    document.getElementById('medName').value = m.name || '';
+    document.getElementById('medCat').value = m.category || '';
+    document.getElementById('medCompany').value = m.company || '';
+    document.getElementById('medBatch').value = m.batch || '';
+    document.getElementById('medPurchasePrice').value = m.purchasePrice || '';
+    document.getElementById('medPrice').value = m.price || '';
+    document.getElementById('medQty').value = m.quantity || '';
+    document.getElementById('medMinStock').value = m.minStock || 10;
+    document.getElementById('medMfgDate').value = m.mfgDate || '';
+    document.getElementById('medExpiry').value = m.expiry || '';
+    document.getElementById('medDesc').value = m.description || '';
+    openModal('addMedModal');
+  };
+
+  window.deleteMed = (id) => {
+    document.getElementById('confirmDeleteBtn').onclick = async () => {
+      await deleteDoc(doc(db, 'medicines', id));
+      closeModal('deleteModal'); loadMeds();
+    };
+    openModal('deleteModal');
+  };
+
+  // Reset form on open
+  window.openModalHook = () => {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = 'Add Medicine';
+    document.getElementById('medSubmitBtn').textContent = 'Add Medicine';
+    document.getElementById('medForm').reset();
+  };
+
+  loadMeds();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

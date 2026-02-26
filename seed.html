@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Seed Data – MediStore</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 60px auto; padding: 20px; }
+    h1 { color: #0f172a; }
+    button { background: #0ea5e9; color: white; border: none; padding: 16px 32px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 8px 4px; }
+    #log { margin-top: 20px; background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 14px; line-height: 2; white-space: pre-wrap; }
+    .warn { background: #fef3c7; padding: 14px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #f59e0b; }
+  </style>
+</head>
+<body>
+  <h1>🌱 Seed Sample Data</h1>
+  <div class="warn">⚠️ <b>Dev only.</b> Adds sample medicines and one sale to Firestore. Delete this file before going live.</div>
+  <button onclick="seedMedicines()">💊 Seed 10 Medicines</button>
+  <button onclick="seedSale()">🧾 Seed Sample Sale</button>
+  <div id="log">Logs will appear here...</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+   const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const today = new Date().toISOString().split('T')[0];
+    const future = (days) => new Date(Date.now() + days*24*60*60*1000).toISOString().split('T')[0];
+    const past = (days) => new Date(Date.now() - days*24*60*60*1000).toISOString().split('T')[0];
+
+    const medicines = [
+      { name:"Paracetamol 500mg", category:"Tablet", company:"Cipla", batch:"B001", purchasePrice:1.5, price:2.5, quantity:500, minStock:50, mfgDate:past(60), expiry:future(730), description:"Pain reliever and fever reducer" },
+      { name:"Amoxicillin 250mg", category:"Capsule", company:"Sun Pharma", batch:"B002", purchasePrice:5.0, price:8.5, quantity:8, minStock:20, mfgDate:past(90), expiry:future(365), description:"Antibiotic for bacterial infections" },
+      { name:"Cough Syrup 100ml", category:"Syrup", company:"Pfizer", batch:"B003", purchasePrice:35, price:55, quantity:45, minStock:20, mfgDate:past(30), expiry:future(540), description:"Cough and cold relief" },
+      { name:"Metformin 500mg", category:"Tablet", company:"USV Ltd", batch:"B004", purchasePrice:2.5, price:4.0, quantity:300, minStock:30, mfgDate:past(45), expiry:future(600), description:"Diabetes management" },
+      { name:"Vitamin C 1000mg", category:"Tablet", company:"Abbott", batch:"B005", purchasePrice:8.0, price:15.0, quantity:200, minStock:25, mfgDate:past(20), expiry:future(720), description:"Immunity booster" },
+      { name:"Ibuprofen 400mg", category:"Tablet", company:"Ranbaxy", batch:"B006", purchasePrice:3.0, price:5.5, quantity:5, minStock:30, mfgDate:past(10), expiry:past(5), description:"Anti-inflammatory pain reliever" }, // EXPIRED
+      { name:"Azithromycin 500mg", category:"Tablet", company:"Dr. Reddy's", batch:"B007", purchasePrice:12, price:22, quantity:60, minStock:15, mfgDate:past(60), expiry:future(20), description:"Antibiotic for respiratory infections" }, // EXPIRING SOON
+      { name:"Omeprazole 20mg", category:"Capsule", company:"Alkem", batch:"B008", purchasePrice:4.5, price:7.5, quantity:150, minStock:20, mfgDate:past(40), expiry:future(500), description:"Acid reflux and stomach ulcer treatment" },
+      { name:"Insulin Injection 10ml", category:"Injection", company:"Novo Nordisk", batch:"B009", purchasePrice:180, price:250, quantity:12, minStock:10, mfgDate:past(15), expiry:future(180), description:"Diabetes insulin injection" },
+      { name:"Betnovate Ointment", category:"Ointment", company:"GSK", batch:"B010", purchasePrice:55, price:90, quantity:3, minStock:10, mfgDate:past(90), expiry:future(400), description:"Skin inflammation treatment" },
+    ];
+
+    window.seedMedicines = async () => {
+      const log = document.getElementById('log');
+      log.textContent = 'Seeding medicines...\n';
+      let count = 0;
+      for (const m of medicines) {
+  try {
+    await addDoc(collection(db, 'medicines'), { ...m, createdAt: new Date().toISOString() });
+    log.textContent += `✅ ${m.name}\n`;
+    count++;
+  } catch(e) {
+    log.textContent += `❌ ${m.name}: ${e.message}\n`;
+  }
+  // Wait 500ms before next upload
+  await new Promise(resolve => setTimeout(resolve, 500));
+}
+      log.textContent += `\n🎉 Done! ${count}/${medicines.length} medicines added.`;
+    };
+
+    window.seedSale = async () => {
+      const log = document.getElementById('log');
+      try {
+        await addDoc(collection(db, 'sales'), {
+          billNo: "10001",
+          customerName: "Rahul Sharma",
+          customerPhone: "9876543210",
+          items: [
+            { name: "Paracetamol 500mg", price: 2.5, qty: 10 },
+            { name: "Vitamin C 1000mg", price: 15.0, qty: 2 }
+          ],
+          subtotal: 55.0, discount: 5, total: 52.25,
+          date: today, createdBy: "admin"
+        });
+        log.textContent += '\n✅ Sample sale added!';
+      } catch(e) {
+        log.textContent += '\n❌ ' + e.message;
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reports – MediStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="brand-icon-sm">⚕</div><span>MediStore</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span>🏠</span> Dashboard</a>
+      <a href="inventory.html" class="nav-item"><span>📦</span> Inventory</a>
+      <a href="sales.html" class="nav-item"><span>🧾</span> Sales & Billing</a>
+      <a href="customers.html" class="nav-item"><span>👥</span> Customers</a>
+      <a href="reports.html" class="nav-item active"><span>📊</span> Reports</a>
+      <div class="nav-divider"></div>
+      <a href="index.html" class="nav-item logout" onclick="logout()"><span>🚪</span> Logout</a>
+    </nav>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title">Reports & Analytics</div>
+      <div class="topbar-right">
+        <button class="btn-primary" onclick="window.print()">🖨️ Print Report</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- Report Tabs -->
+      <div class="report-tabs">
+        <button class="report-tab active" onclick="showReport('sales', this)">📈 Sales Report</button>
+        <button class="report-tab" onclick="showReport('stock', this)">📦 Stock Report</button>
+        <button class="report-tab" onclick="showReport('expiry', this)">📅 Expiry Report</button>
+      </div>
+
+      <!-- Sales Report -->
+      <div class="report-panel" id="report-sales">
+        <div class="filter-bar">
+          <select id="salesPeriod" onchange="loadSalesReport()" class="filter-select">
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month" selected>This Month</option>
+            <option value="all">All Time</option>
+          </select>
+          <input type="date" id="fromDate" class="filter-input" placeholder="From Date"/>
+          <input type="date" id="toDate" class="filter-input" placeholder="To Date"/>
+          <button class="btn-sm" onclick="loadSalesReport()">Apply</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card blue"><div class="stat-icon">🧾</div><div class="stat-info"><div class="stat-num" id="repTotalBills">—</div><div class="stat-label">Total Bills</div></div></div>
+          <div class="stat-card green"><div class="stat-icon">💰</div><div class="stat-info"><div class="stat-num" id="repRevenue">—</div><div class="stat-label">Total Revenue</div></div></div>
+          <div class="stat-card orange"><div class="stat-icon">💊</div><div class="stat-info"><div class="stat-num" id="repItemsSold">—</div><div class="stat-label">Items Sold</div></div></div>
+          <div class="stat-card purple"><div class="stat-icon">📉</div><div class="stat-info"><div class="stat-num" id="repDiscount">—</div><div class="stat-label">Total Discounts</div></div></div>
+        </div>
+
+        <div class="section-card">
+          <h3 class="section-title">Sales Breakdown</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Bill No.</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Date</th></tr></thead>
+              <tbody id="salesRepBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stock Report -->
+      <div class="report-panel hidden" id="report-stock">
+        <div class="section-card">
+          <h3 class="section-title">Current Stock Report</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Medicine</th><th>Category</th><th>Qty in Stock</th><th>Min Stock</th><th>Value (₹)</th><th>Status</th></tr></thead>
+              <tbody id="stockRepBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-header"><h3 class="section-title">Stock Summary</h3></div>
+          <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="stat-card blue"><div class="stat-icon">💊</div><div class="stat-info"><div class="stat-num" id="stockTotal">—</div><div class="stat-label">Total Medicines</div></div></div>
+            <div class="stat-card green"><div class="stat-icon">💰</div><div class="stat-info"><div class="stat-num" id="stockValue">—</div><div class="stat-label">Total Stock Value</div></div></div>
+            <div class="stat-card red"><div class="stat-icon">⚠️</div><div class="stat-info"><div class="stat-num" id="stockLow">—</div><div class="stat-label">Low Stock Items</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expiry Report -->
+      <div class="report-panel hidden" id="report-expiry">
+        <div class="section-card">
+          <h3 class="section-title">Expired Medicines</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Medicine</th><th>Category</th><th>Qty</th><th>Expiry Date</th><th>Days Overdue</th></tr></thead>
+              <tbody id="expiredBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-card">
+          <h3 class="section-title">Expiring in Next 30 Days</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Medicine</th><th>Category</th><th>Qty</th><th>Expiry Date</th><th>Days Left</th></tr></thead>
+              <tbody id="expiringBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+  const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const user = JSON.parse(sessionStorage.getItem('msUser') || 'null');
+  if (!user) window.location.href = 'index.html';
+
+  let allMeds = [], allSales = [];
+  const today = new Date().toISOString().split('T')[0];
+  const in30 = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+
+  async function init() {
+    const [m, s] = await Promise.all([getDocs(collection(db, 'medicines')), getDocs(collection(db, 'sales'))]);
+    allMeds = []; m.forEach(d => allMeds.push({ id: d.id, ...d.data() }));
+    allSales = []; s.forEach(d => allSales.push({ id: d.id, ...d.data() }));
+    loadSalesReport();
+    loadStockReport();
+    loadExpiryReport();
+  }
+
+  window.showReport = (type, btn) => {
+    document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.report-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('report-' + type).classList.remove('hidden');
+    btn.classList.add('active');
+  };
+
+  window.loadSalesReport = () => {
+    const period = document.getElementById('salesPeriod').value;
+    const from = document.getElementById('fromDate').value;
+    const to = document.getElementById('toDate').value;
+    let sales = [...allSales];
+    const now = new Date();
+
+    if (from && to) {
+      sales = sales.filter(s => s.date >= from && s.date <= to);
+    } else {
+      if (period === 'today') sales = sales.filter(s => s.date === today);
+      else if (period === 'week') {
+        const wk = new Date(now - 7*24*60*60*1000).toISOString().split('T')[0];
+        sales = sales.filter(s => s.date >= wk);
+      } else if (period === 'month') {
+        const mo = now.toISOString().slice(0,7);
+        sales = sales.filter(s => s.date?.startsWith(mo));
+      }
+    }
+
+    const revenue = sales.reduce((s,x) => s + (x.total||0), 0);
+    const itemsSold = sales.reduce((s,x) => s + (x.items||[]).reduce((a,i) => a + i.qty, 0), 0);
+    const discounts = sales.reduce((s,x) => s + (x.subtotal||0)*(x.discount||0)/100, 0);
+
+    document.getElementById('repTotalBills').textContent = sales.length;
+    document.getElementById('repRevenue').textContent = '₹' + revenue.toFixed(2);
+    document.getElementById('repItemsSold').textContent = itemsSold;
+    document.getElementById('repDiscount').textContent = '₹' + discounts.toFixed(2);
+
+    const tbody = document.getElementById('salesRepBody');
+    tbody.innerHTML = sales.sort((a,b)=>b.date?.localeCompare(a.date)).map(s => `
+      <tr><td><b>#${s.billNo}</b></td><td>${s.customerName||'Walk-in'}</td><td>${(s.items||[]).length}</td>
+      <td>₹${(s.subtotal||0).toFixed(2)}</td><td>${s.discount||0}%</td><td><b>₹${(s.total||0).toFixed(2)}</b></td><td>${s.date}</td></tr>
+    `).join('') || '<tr><td colspan="7" class="no-data">No sales in this period.</td></tr>';
+  };
+
+  function loadStockReport() {
+    const totalVal = allMeds.reduce((s,m) => s + (m.price||0)*(m.quantity||0), 0);
+    const low = allMeds.filter(m => m.quantity <= (m.minStock||10));
+    document.getElementById('stockTotal').textContent = allMeds.length;
+    document.getElementById('stockValue').textContent = '₹' + totalVal.toFixed(2);
+    document.getElementById('stockLow').textContent = low.length;
+
+    document.getElementById('stockRepBody').innerHTML = allMeds.map(m => {
+      const st = m.quantity <= (m.minStock||10) ? '<span class="badge red">Low</span>' : '<span class="badge green">OK</span>';
+      return `<tr><td><b>${m.name}</b></td><td>${m.category||'—'}</td><td>${m.quantity}</td><td>${m.minStock||10}</td><td>₹${((m.price||0)*(m.quantity||0)).toFixed(2)}</td><td>${st}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="no-data">No medicines.</td></tr>';
+  }
+
+  function loadExpiryReport() {
+    const expired = allMeds.filter(m => m.expiry && m.expiry < today);
+    const expiring = allMeds.filter(m => m.expiry && m.expiry >= today && m.expiry <= in30);
+    const dayDiff = (a, b) => Math.round((new Date(a)-new Date(b))/(1000*60*60*24));
+
+    document.getElementById('expiredBody').innerHTML = expired.map(m => `
+      <tr><td><b>${m.name}</b></td><td>${m.category||'—'}</td><td>${m.quantity}</td>
+      <td class="text-red">${m.expiry}</td><td class="text-red">${Math.abs(dayDiff(today,m.expiry))} days overdue</td></tr>
+    `).join('') || '<tr><td colspan="5" class="no-data">✅ No expired medicines.</td></tr>';
+
+    document.getElementById('expiringBody').innerHTML = expiring.map(m => `
+      <tr><td><b>${m.name}</b></td><td>${m.category||'—'}</td><td>${m.quantity}</td>
+      <td class="text-orange">${m.expiry}</td><td class="text-orange">${dayDiff(m.expiry,today)} days left</td></tr>
+    `).join('') || '<tr><td colspan="5" class="no-data">✅ No medicines expiring in 30 days.</td></tr>';
+  }
+
+  init();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

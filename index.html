@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediStore – Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="login-body">
+  <div class="login-split">
+    <div class="login-left">
+      <div class="login-brand">
+        <div class="brand-icon">⚕</div>
+        <h1>MediStore</h1>
+        <p>Medical Store Management System</p>
+      </div>
+      <div class="login-features">
+        <div class="feat"><span>📦</span> Real-time Inventory</div>
+        <div class="feat"><span>🔔</span> Expiry Alerts</div>
+        <div class="feat"><span>🧾</span> Auto Billing</div>
+        <div class="feat"><span>📊</span> Sales Reports</div>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-card">
+        <h2>Welcome Back</h2>
+        <p class="login-sub">Sign in to your MediStore account</p>
+
+        <div class="role-tabs">
+          <button class="role-tab active" onclick="setRole('admin', this)">Admin</button>
+          <button class="role-tab" onclick="setRole('staff', this)">Staff</button>
+        </div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Enter username" required />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password" required />
+            <span class="eye-toggle" onclick="togglePwd()">👁</span>
+          </div>
+          <div class="login-hint">
+            Demo → Admin: <b>admin / admin123</b> &nbsp;|&nbsp; Staff: <b>staff / staff123</b>
+          </div>
+          <button type="submit" class="btn-login">Sign In →</button>
+          <div class="login-msg" id="loginMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // ✅ REPLACE WITH YOUR FIREBASE CONFIG (see README)
+  const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    window.db = db;
+
+    let selectedRole = 'admin';
+    window.setRole = (role, btn) => {
+      selectedRole = role;
+      document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+
+    window.togglePwd = () => {
+      const p = document.getElementById('password');
+      p.type = p.type === 'password' ? 'text' : 'password';
+    };
+
+    // Demo credentials map
+    const demoUsers = {
+      'admin': { pass: 'admin123', email: 'admin@medistore.com', role: 'admin' },
+      'staff': { pass: 'staff123', email: 'staff@medistore.com', role: 'staff' }
+    };
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const msg = document.getElementById('loginMsg');
+
+      const demo = demoUsers[username];
+      if (demo && demo.pass === password && demo.role === selectedRole) {
+        sessionStorage.setItem('msUser', JSON.stringify({ username, role: demo.role }));
+        msg.style.color = 'green';
+        msg.textContent = '✅ Login successful! Redirecting...';
+        setTimeout(() => window.location.href = 'dashboard.html', 800);
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = '❌ Invalid credentials. Try admin/admin123';
+      }
+    });
+  </script>
+</body>
+</html>

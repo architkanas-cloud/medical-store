@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard – MediStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon-sm">⚕</div>
+        <span>MediStore</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item active"><span>🏠</span> Dashboard</a>
+        <a href="inventory.html" class="nav-item"><span>📦</span> Inventory</a>
+        <a href="sales.html" class="nav-item"><span>🧾</span> Sales & Billing</a>
+        <a href="customers.html" class="nav-item"><span>👥</span> Customers</a>
+        <a href="reports.html" class="nav-item"><span>📊</span> Reports</a>
+        <div class="nav-divider"></div>
+        <a href="#" class="nav-item" id="adminLink"><span>⚙️</span> Admin Panel</a>
+        <a href="index.html" class="nav-item logout" onclick="logout()"><span>🚪</span> Logout</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-area">
+      <header class="topbar">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-right">
+          <div class="alert-bell" id="alertBell">🔔 <span class="alert-count" id="alertCount">0</span></div>
+          <div class="user-chip" id="userChip">Admin</div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- STATS CARDS -->
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-icon">💊</div>
+            <div class="stat-info">
+              <div class="stat-num" id="totalMeds">—</div>
+              <div class="stat-label">Total Medicines</div>
+            </div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <div class="stat-num" id="todaySales">—</div>
+              <div class="stat-label">Today's Sales</div>
+            </div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+              <div class="stat-num" id="lowStock">—</div>
+              <div class="stat-label">Low Stock Items</div>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon">📅</div>
+            <div class="stat-info">
+              <div class="stat-num" id="expirySoon">—</div>
+              <div class="stat-label">Expiring Soon</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div class="section-card" id="alertsSection">
+          <h3 class="section-title">⚠️ Alerts</h3>
+          <div id="alertsList" class="alerts-list">
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+
+        <!-- RECENT SALES -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3 class="section-title">🧾 Recent Sales</h3>
+            <a href="sales.html" class="btn-sm">View All</a>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="recentSalesTable">
+              <thead><tr><th>Bill No.</th><th>Customer</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody id="recentSalesBody"><tr><td colspan="5" class="loading-cell">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- LOW STOCK -->
+        <div class="section-card">
+          <div class="section-header">
+            <h3 class="section-title">📦 Low Stock Medicines</h3>
+            <a href="inventory.html" class="btn-sm">Manage Stock</a>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Medicine</th><th>Category</th><th>Stock</th><th>Min. Required</th><th>Status</th></tr></thead>
+              <tbody id="lowStockBody"><tr><td colspan="5" class="loading-cell">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+   const firebaseConfig = {
+  apiKey: "AIzaSyCscDqe7I8VPQN220Gs3vrb_bLAxZk4l0Q",
+  authDomain: "medical-store-83e20.firebaseapp.com",
+  projectId: "medical-store-83e20",
+  storageBucket: "medical-store-83e20.firebasestorage.app",
+  messagingSenderId: "634790976716",
+  appId: "1:634790976716:web:fc4422a381490cf87bf669"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Auth check
+    const user = JSON.parse(sessionStorage.getItem('msUser') || 'null');
+    if (!user) window.location.href = 'index.html';
+    document.getElementById('userChip').textContent = user?.username || 'User';
+    if (user?.role !== 'admin') document.getElementById('adminLink').style.display = 'none';
+
+    const today = new Date().toISOString().split('T')[0];
+    const in30Days = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+
+    async function loadDashboard() {
+      try {
+        const medsSnap = await getDocs(collection(db, 'medicines'));
+        const meds = [];
+        medsSnap.forEach(d => meds.push({ id: d.id, ...d.data() }));
+
+        const salesSnap = await getDocs(collection(db, 'sales'));
+        const sales = [];
+        salesSnap.forEach(d => sales.push({ id: d.id, ...d.data() }));
+
+        // Stats
+        document.getElementById('totalMeds').textContent = meds.length;
+
+        const todayTotal = sales.filter(s => s.date === today).reduce((sum, s) => sum + (s.total || 0), 0);
+        document.getElementById('todaySales').textContent = '₹' + todayTotal.toFixed(2);
+
+        const lowStockMeds = meds.filter(m => (m.quantity || 0) <= (m.minStock || 10));
+        document.getElementById('lowStock').textContent = lowStockMeds.length;
+
+        const expiring = meds.filter(m => m.expiry && m.expiry <= in30Days && m.expiry >= today);
+        document.getElementById('expirySoon').textContent = expiring.length;
+        document.getElementById('alertCount').textContent = lowStockMeds.length + expiring.length;
+
+        // Alerts
+        const alertsList = document.getElementById('alertsList');
+        let alertsHTML = '';
+        lowStockMeds.forEach(m => {
+          alertsHTML += `<div class="alert-item red">⚠️ <b>${m.name}</b> is low on stock — only <b>${m.quantity}</b> units left.</div>`;
+        });
+        expiring.forEach(m => {
+          alertsHTML += `<div class="alert-item orange">📅 <b>${m.name}</b> expires on <b>${m.expiry}</b>. Take action.</div>`;
+        });
+        alertsList.innerHTML = alertsHTML || '<div class="no-alerts">✅ No alerts right now.</div>';
+
+        // Recent sales
+        const recentSales = sales.sort((a,b) => b.date?.localeCompare(a.date)).slice(0, 5);
+        const tbody = document.getElementById('recentSalesBody');
+        tbody.innerHTML = recentSales.length ? recentSales.map(s => `
+          <tr>
+            <td><b>#${s.billNo || s.id.slice(0,6).toUpperCase()}</b></td>
+            <td>${s.customerName || 'Walk-in'}</td>
+            <td>₹${(s.total || 0).toFixed(2)}</td>
+            <td>${s.date || '—'}</td>
+            <td><span class="badge green">Paid</span></td>
+          </tr>
+        `).join('') : '<tr><td colspan="5" class="no-data">No sales yet.</td></tr>';
+
+        // Low stock table
+        const lsBody = document.getElementById('lowStockBody');
+        lsBody.innerHTML = lowStockMeds.length ? lowStockMeds.map(m => `
+          <tr>
+            <td><b>${m.name}</b></td>
+            <td>${m.category || '—'}</td>
+            <td>${m.quantity}</td>
+            <td>${m.minStock || 10}</td>
+            <td><span class="badge red">Low Stock</span></td>
+          </tr>
+        `).join('') : '<tr><td colspan="5" class="no-data">All stock levels OK ✅</td></tr>';
+
+      } catch(e) {
+        document.getElementById('alertsList').innerHTML = '<div class="alert-item red">Configure Firebase to load data.</div>';
+      }
+    }
+
+    loadDashboard();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
